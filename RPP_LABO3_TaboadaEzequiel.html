@@ -1,0 +1,657 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Taboada Ezequiel</title>
+
+    <script>
+        var arrayDeObjetos = {};
+        function $(id) {
+            return document.getElementById(id);
+        }
+        window.addEventListener('load', function () {
+            arrayDeObjetos = generarArrayObjetos();
+            guardaArrayObjetos(arrayDeObjetos);
+            cargarCheckBox_Tabla(filtrarListaDeObjetos(arrayDeObjetos));
+            $("filtro").addEventListener('change', function () {
+                cargarCheckBox_Tabla(arrayDeObjetos);
+            });
+            $("btn-calcular").addEventListener('click', function () {
+                calcularPromedio(filtrarListaDeObjetos(arrayDeObjetos));
+            });
+            $("btn-agregar").addEventListener('click', btnAgregar);
+            $("filtro2").addEventListener('change', function () {
+                filtrarAbm(arrayDeObjetos)
+            });
+        });
+
+    </script>
+
+</head>
+
+<body>
+
+    <div id="container-gral" style="border-radius: 20px; display: flex; justify-content: center;">
+
+        <div id="container-formulario_p1"
+            style="border: 2px solid black; padding: 10px; background-color: rgb(108, 187, 224);">
+            <h2>Formulario de Datos</h2>
+            <div id="container-filtro">
+                <hr>
+                <label for="filtro" style="font-weight:bold;">Filtrar por:</label>
+                <select id="filtro">
+                    <option value="todos">Todos</option>
+                    <option value="Profesionals">Profesionals</option>
+                    <option value="Futbolistas">Futbolistas</option>
+                </select>
+            </div>
+
+            <div id="container-calcular">
+                <br>
+                <label for=" calcular-edad" style="font-weight:bold;">Calcular edad promedio:</label>
+                <input type="text" id="calcular-edad" readonly>
+                <button id="btn-calcular" style="font-weight:bold;">Calcular</button>
+            </div>
+
+            <div>
+                <br>
+                <hr>
+                <label for="" style="font-weight:bold;">Mostrar Columnas:</label>
+                <br>
+                <div id="container-checkBox"></div>
+                <hr>
+                <br>
+            </div>
+            <div id="table-container"> </div>
+            <div>
+                <br>
+                <button id="btn-agregar"
+                    style="border-radius: 10px; font-weight: bold; background-color: rgb(130, 207, 105); padding: 10px 20px;">Agregar</button>
+            </div>
+        </div>
+
+        <div id="container-formulario_p2"
+            style="border-radius: 5px; border: 2px solid black; padding: 10px; background-color: rgb(108, 187, 224); display: none;">
+            <h1>Formulario ABM</h1>
+            <div id="container-filtro2">
+                <label for="filtro2" style="font-weight:bold;">TIpo:</label>
+                <select id="filtro2">
+                    <option value="Profesionals">Profesionals</option>
+                    <option value="Futbolistas">Futbolistas</option>
+                </select>
+            </div>
+            <div id="container-abm"></div>
+        </div>
+
+    </div>
+
+    <script>
+
+        //---------------------------------------------------------------------------------------------------------------------------------------------------------
+        //>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>     CLASES      <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
+        //---------------------------------------------------------------------------------------------------------------------------------------------------------
+
+        class Persona {
+            constructor(id, nombre, apellido, edad) {
+                this.id = id;
+                this.nombre = nombre;
+                this.apellido = apellido;
+                this.edad = edad;
+            }
+            toString() {
+                return `ID: ${this.id}, Nombre: ${this.nombre}, Apellido: ${this.apellido}, Edad: ${this.edad}`;
+            }
+            toJson() {
+                return JSON.stringify({
+                    id: this.id,
+                    nombre: this.nombre,
+                    apellido: this.apellido,
+                    edad: this.edad,
+                });
+            }
+        }
+
+        class Futbolista extends Persona {
+            constructor(id, nombre, apellido, edad, equipo, posicion, cantidadGoles) {
+                super(id, nombre, apellido, edad);
+                this.equipo = equipo;
+                this.posicion = posicion;
+                this.cantidadGoles = cantidadGoles;
+            }
+            toString() {
+                return `${super.toString()}, {equipo: ${super.equipo}, posicion: ${super.posicion},cantidadGoles: ${super.cantidadGoles}`;
+            }
+            toJson() {
+                const personaJson = super.toJson();
+                const ProfesionalJson = JSON.stringify({
+                    equipo: this.equipo,
+                    posicion: this.posicion,
+                    cantidadGoles: this.cantidadGoles,
+                });
+                return Object.assign({}, JSON.parse(personaJson), JSON.parse(ProfesionalJson));
+            }
+        }
+
+        class Profesional extends Persona {
+            constructor(id, nombre, apellido, edad, titulo, facultad, anioGraduacion) {
+                super(id, nombre, apellido, edad);
+                this.titulo = titulo;
+                this.facultad = facultad;
+                this.anioGraduacion = anioGraduacion;
+            }
+            toString() {
+                return `${super.toString()}, {titulo: ${super.titulo}, facultad: ${super.facultad},anioGraduacion: ${super.anioGraduacion}`;
+            }
+            toJson() {
+                const personaJson = super.toJson();
+                const ProfesionalJson = JSON.stringify({
+                    titulo: this.titulo,
+                    facultad: this.facultad,
+                    anioGraduacion: this.anioGraduacion,
+                });
+                return Object.assign({}, JSON.parse(personaJson), JSON.parse(ProfesionalJson));
+            }
+        }
+      
+        function validarDatos(datos, tipo) {
+            let msj = '';
+
+            if (!datos.id || !datos.nombre || !datos.apellido || !datos.edad) {
+                msj += '[ Id - nombre - apellido - edad ] NO pueden ser nulos. \n';
+            }
+
+            if (datos.edad <= 15) {
+                msj += 'La edad debe ser mayor a 15 años. \n';
+            }
+
+            if (tipo === 'Futbolistas') {
+                if (!datos.equipo || !datos.posicion || !datos.cantidadGoles) {
+                    msj += '[ equipo - posicion - cantidadGoles ] NO pueden ser nulos. \n';
+                }
+
+                if (datos.cantidadGoles <= -1) {
+                    msj += 'La cantidad de goles debe ser mayor o igual a 0. \n';
+                }
+            } else {
+                if (!datos.titulo || !datos.facultad || !datos.anioGraduacion) {
+                    msj += '[ Titulo - Facultad - anioGraduacion ]  NO pueden ser nulos';
+                }
+
+                if (datos.anioGraduacion <= 1950) {
+                    msj += 'El año de graduación debe ser posterior a 1950. \n';
+                }
+            }
+
+            if (msj === '') {
+                return true;
+            } else {
+                return msj + '\n *** OPERACION CANCELADA ***';
+            }
+        }
+
+        function saberTipo(objeto) {
+            if (objeto.hasOwnProperty('equipo') && objeto.hasOwnProperty('posicion') && objeto.hasOwnProperty('cantidadGoles') && objeto.equipo !== '' && objeto.posicion !== '' && objeto.cantidadGoles !== '') {
+                return "Futbolista";
+            } else if (objeto.hasOwnProperty('titulo') && objeto.hasOwnProperty('facultad') && objeto.hasOwnProperty('anioGraduacion') && objeto.titulo !== '' && objeto.facultad !== '' && objeto.anioGraduacion !== '') {
+                return "Profesional";
+            }
+        }
+
+        function crearUno(objArray) {
+            if (saberTipo(objArray) == "Futbolista") {
+                const { id, nombre, apellido, edad, equipo, posicion, cantidadGoles } = objArray;
+                objeto = new Futbolista(id, nombre, apellido, edad, equipo, posicion, cantidadGoles);
+            } else {
+                const { id, nombre, apellido, edad, titulo, facultad, anioGraduacion } = objArray;
+                objeto = new Profesional(id, nombre, apellido, edad, titulo, facultad, anioGraduacion);
+            }
+            return objeto;
+        }
+
+        function generarArrayObjetos() {
+            const datosRecuperados = localStorage.getItem('personas');
+            const datosString = '[{"id":1,"nombre":"Marcelo","apellido":"Luque","edad":45,"titulo":"Ingeniero","facultad":"UTN","anioGraduacion":2002},{"id":2,"nombre":"Ramiro","apellido":"Escobar","edad":35,"titulo":"Medico","facultad":"UBA","anioGraduacion":20012},{"id":3,"nombre":"Facundo","apellido":"Cairo","edad":30,"titulo":"Abogado","facultad":"UCA","anioGraduacion":2017},{"id":4,"nombre":"Fernando","apellido":"Nieto","edad":18,"equipo":"Independiente","posicion":"Delantero","cantidadGoles":7},{"id":5,"nombre":"Manuel","apellido":"Loza","edad":20,"equipo":"Racing","posicion":"Volante","cantidadGoles":2},{"id":6,"nombre":"Nicolas","apellido":"Serrano","edad":23,"equipo":"Boca","posicion":"Arquero","cantidadGoles":0}]';
+            //const personajesSRT = JSON.parse(datosString);
+            const personajesSRT = datosRecuperados ? JSON.parse(datosRecuperados) : JSON.parse(datosString);
+            const personajes = [];
+
+            personajesSRT.forEach(personaje => {
+                personajes.push(crearUno(personaje));
+            });
+
+            return personajes;
+        }
+
+        function agregarPersonaje(lista, personaje) {
+            lista.push(crearUno(personaje));
+            guardaArrayObjetos(lista);
+        }
+
+        function guardaArrayObjetos(lista) {
+            const personajesString = JSON.stringify(lista);
+            localStorage.removeItem('personas');
+            localStorage.setItem('personas', personajesString);
+        }
+
+        function actualizarPorId(lista, nuevoObjeto) {
+            const index = lista.findIndex(x => x.id == nuevoObjeto.id);
+            if (index > -1) {
+                lista[index] = nuevoObjeto;
+                guardaArrayObjetos(lista);
+                return true;
+            }
+            return false;
+        }
+
+        function eliminarPorId(lista, objeto) {
+            const index = lista.findIndex(x => x.id == objeto.id);
+            if (index !== -1) {
+                lista.splice(index, 1);
+                guardaArrayObjetos(lista);
+                return true;
+            }
+            return false;
+        }
+
+        function obtenerNuevoId(lista) {
+            const maxId = lista.reduce((max, x) => (x.id > max ? x.id : max), 0);
+            return parseInt(maxId) + 1;
+        }
+
+        function getKeys(lista) {
+            const keys = [];
+            lista.forEach(obj => {
+                for (let key in obj) {
+                    if (!keys.includes(key)) {
+                        keys.push(key);
+                    }
+                }
+            })
+            return keys;
+        }
+
+        //---------------------------------------------------------------------------------------------------------------------------------------------------------
+        //>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>> Tabla Principal <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
+        //---------------------------------------------------------------------------------------------------------------------------------------------------------
+
+        function crearThead(lista) {
+            const thead = document.createElement("thead");
+            const trThead = document.createElement("tr");
+            const keys = getKeys(lista);
+            keys.forEach(key => {
+                const newTh = document.createElement("th");
+                const newBtn = document.createElement("button");
+                newBtn.style.border = "none";
+                newBtn.style.backgroundColor = "black";
+                newBtn.style.color = "white";
+                newBtn.style.fontWeight = "bold";
+                newBtn.addEventListener("click", ordenarPorHead)
+                newBtn.textContent = key.charAt(0).toUpperCase() + key.slice(1);
+                newTh.setAttribute("id", key);
+                newBtn.setAttribute("id", key);
+                newTh.appendChild(newBtn);
+                newTh.style.padding = "8px";
+                newTh.style.backgroundColor = "black"
+                trThead.appendChild(newTh);
+            });
+            thead.appendChild(trThead);
+            trThead.style.border = "1px solid black";
+            return thead;
+        }
+
+        function crearTbody(lista) {
+            const tbody = document.createElement("tbody");
+            const keys = getKeys(lista);
+            let contador = 0;
+            lista.forEach(obj => {
+                const tr = document.createElement("tr");
+                if (contador % 2 === 0) {
+                    tr.style.backgroundColor = "lightgray";
+                } else {
+                    tr.style.backgroundColor = "white";
+                }
+                for (let key in keys) {
+                    const newTd = document.createElement("td");
+                    newTd.style.border = "1px solid black";
+                    newTd.style.padding = "8px";
+                    newTd.setAttribute("id", keys[key]);
+                    newTd.addEventListener("dblclick", dbcTabla);
+                    if (obj.hasOwnProperty(keys[key])) {
+                        newTd.textContent = obj[keys[key]];
+                    }
+                    tr.appendChild(newTd);
+                }
+                tbody.appendChild(tr);
+                contador++;
+            })
+            return tbody;
+        }
+
+        function crearTabla(lista) {
+            const tabla = document.createElement("table");
+            const thead = crearThead(lista);
+            const tbody = crearTbody(lista);
+            tabla.appendChild(thead);
+            tabla.appendChild(tbody);
+            return tabla;
+        }
+
+        function filtrarListaDeObjetos(lista) {
+            const filtro = $("filtro");
+            let seleccion = [];
+            seleccion = lista.filter((obj) => {
+                return filtro.value === "Profesionals" ? obj instanceof Profesional :
+                    filtro.value === "Futbolistas" ? obj instanceof Futbolista : true;
+            });
+            return seleccion;
+        }
+
+        function cargarTabla(lista) {
+            $("table-container").firstChild.remove();
+            $("table-container").appendChild(crearTabla(lista));
+        }
+
+        function actualizarColumnas() {
+            const tabla = $("table-container").firstChild;
+            const checkBoxes = Array.from($("container-checkBox").querySelectorAll('input[type="checkbox"]'));
+            const checkBoxesSeleccionados = checkBoxes.filter((checkBox) => checkBox.checked);
+            checkBoxes.forEach(check => {
+                const th = tabla.querySelectorAll(`th#${check.value}`);
+                const td = tabla.querySelectorAll(`td#${check.value}`);
+                if (th) {
+                    th.forEach(th => {
+                        th.style.display = check.checked ? "table-cell" : "none";
+                    })
+                }
+                if (td) {
+                    td.forEach(td => {
+                        td.style.display = check.checked ? "table-cell" : "none";
+                    })
+                }
+            });
+        }
+
+        function cargarCheckBox(lista) {
+            const container = $("container-checkBox");
+            const keys = getKeys(lista);
+            while (container.firstChild) {
+                container.removeChild(container.firstChild);
+            }
+            keys.forEach(key => {
+                const checkBox = document.createElement("input");
+                checkBox.type = "checkbox";
+                checkBox.value = key;
+                checkBox.checked = true;
+                checkBox.addEventListener("change", actualizarColumnas);
+                const label = document.createElement("label");
+                label.textContent = key.charAt(0).toUpperCase() + key.slice(1);
+                label.style.marginLeft = "12px";
+                $("container-checkBox").appendChild(label);
+                $("container-checkBox").appendChild(checkBox);
+            });
+        }
+
+        function cargarCheckBox_Tabla(lista) {
+            const actual = filtrarListaDeObjetos(lista)
+            cargarCheckBox(actual);
+            cargarTabla(actual);
+        }
+
+        function calcularPromedio(lista) {
+            const input = $("calcular-edad");
+            let resultado = 0;
+            let acumuladorEdades = lista.reduce((acumulador, item) => {
+                return acumulador + item.edad;
+            }, 0)
+            resultado = acumuladorEdades / lista.length;
+            input.value = resultado.toFixed(2);
+        }
+
+        function ordenarPorHead() {
+            const listaActual = filtrarListaDeObjetos(arrayDeObjetos);
+            const columnaAOrdenar = this.id;
+            let listaOrdenada = listaActual.map(obj => obj);
+            if (columnaAOrdenar === "id" || columnaAOrdenar === "edad" || columnaAOrdenar === "cantidadGoles" || columnaAOrdenar === "anioGraduacion") {
+                listaOrdenada.sort((a, b) => (a[columnaAOrdenar] ? parseInt(a[columnaAOrdenar]) : 0) - (b[columnaAOrdenar] ? parseInt(b[columnaAOrdenar]) : 0));
+            } else {
+                listaOrdenada.sort((a, b) => a[columnaAOrdenar]?.localeCompare(b[columnaAOrdenar] ?? ""));
+            }
+            cargarTabla(listaOrdenada);
+            return true;
+        }
+
+        //---------------------------------------------------------------------------------------------------------------------------------------------------------
+        //>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>    FORM ABM     <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
+        //---------------------------------------------------------------------------------------------------------------------------------------------------------
+
+        function toggleDisplay() {
+            element1 = $("container-formulario_p1");
+            element2 = $("container-formulario_p2");
+            if (element1.style.display === "none") {
+                element1.style.display = "block";
+            } else {
+                element1.style.display = "none";
+            }
+            if (element2.style.display === "none") {
+                element2.style.display = "block";
+            } else {
+                element2.style.display = "none";
+            }
+        }
+
+        function crearBoton(funcionEvento, texto, bckgrColor, txtColor) {
+            const boton = document.createElement("button");
+            boton.style.fontWeight = "bold";
+            boton.textContent = texto;
+            boton.addEventListener("click", funcionEvento);
+            boton.style.borderRadius = "10px";
+            boton.style.backgroundColor = bckgrColor;
+            boton.style.color = txtColor;
+            boton.style.padding = "10px 20px";
+            boton.style.marginRight = "5px";
+
+            return boton;
+        }
+
+        function crearBotones(alta = false) {
+            const div2 = document.createElement("div");
+            div2.style.display = "flex";
+            div2.style.padding = "5px";
+            div2.style.justifyContent = "space-between";
+            const btnAceptar = crearBoton(confirmarModificacion, "Modificar", "green", "white");
+            const btnEliminar = crearBoton(confirmarEliminacion, "Eliminar", "red", "white");
+            const btnCancelar = crearBoton(toggleDisplay, "Cancelar", "white", "black");
+            if (alta) {
+                btnAceptar.textContent = "Agregar";
+                btnAceptar.removeEventListener("click", confirmarModificacion);
+                btnAceptar.addEventListener("click", confirmarAgregar);
+                btnAceptar.style.backgroundColor = "green";
+            } else {
+                div2.appendChild(btnEliminar);
+            }
+            div2.appendChild(btnAceptar);
+            div2.appendChild(btnCancelar);
+            return div2;
+        }
+
+        function dbcTabla() {
+            const fila = event.target.parentElement;
+            const celdas = fila.getElementsByTagName('td');
+            const objeto = {};
+            for (let i = 0; i < celdas.length; i++) {
+                const propiedad = celdas[i].getAttribute('id');
+                objeto[propiedad] = celdas[i].textContent;
+
+            }
+            const form = crearFormABM(Object.keys(objeto));
+            llenarFormulario(form, objeto);
+            const div2 = crearBotones();
+            form.appendChild(div2);
+            $("container-abm").appendChild(form);
+            const filtro = $("filtro2");
+            if (saberTipo(objeto) == "Futbolista") {
+                filtro.value = "Futbolistas";
+            } else {
+                filtro.value = "Profesionals";
+            }
+            filtro.setAttribute("disabled", "true");
+            toggleDisplay();
+
+        }
+
+        function filtrarListaDeObjetos2(lista) {
+            const filtro = $("filtro2");
+            let seleccion = [];
+            seleccion = lista.filter((obj) => {
+                return filtro.value == "Profesionals" ? obj instanceof Profesional :
+                    filtro.value == "Futbolistas" ? obj instanceof Futbolista : true;
+            });
+            return seleccion;
+        }
+
+        function dibujarAbm(lista) {
+            const keys = getKeys(filtrarListaDeObjetos2(lista));
+            const form = crearFormABM(keys);
+            const div2 = crearBotones(true);
+            form.appendChild(div2);
+            const input = form.querySelector(`input#${'id'}`);
+            input.value = obtenerNuevoId(arrayDeObjetos);
+            input.readOnly = true;
+            $("container-abm").appendChild(form);
+        }
+
+        function filtrarAbm(lista) {
+            $("container-abm").firstChild.remove();
+            dibujarAbm(lista);
+        }
+
+        function btnAgregar() {
+            dibujarAbm(arrayDeObjetos);
+
+            toggleDisplay();
+        }
+
+        function crearFormABM(lista) {
+            const form = document.createElement("form");
+            form.setAttribute("id", "abm-form");
+            lista.forEach(propiedad => {
+                const div = document.createElement("div");
+                div.setAttribute("id", propiedad);
+                div.style.display = "flex";
+                div.style.padding = "5px";
+                div.style.justifyContent = "flex-end";
+                const input = document.createElement("input");
+                input.setAttribute("type", "text");
+                input.setAttribute("id", propiedad);
+                input.setAttribute("name", propiedad);
+                input.style.padding = "10px";
+                input.style.border = "1px solid gray";
+                input.style.borderRadius = "4px";
+                input.style.backgroundColor = "rgb(242, 242, 242)";
+                input.style.textAlign = "center";
+                const label = document.createElement("label");
+                label.setAttribute("for", propiedad);
+                label.textContent = propiedad.charAt(0).toUpperCase() + propiedad.slice(1);
+                label.style.fontWeight = "bold";
+                label.style.padding = "5px";
+                div.appendChild(label);
+                div.appendChild(input);
+                form.appendChild(div);
+            });
+            return form;
+        }
+
+        function llenarFormulario(formulario, objeto) {
+            const elementos = formulario.elements;
+            for (let i = 0; i < elementos.length; i++) {
+                const elemento = elementos[i];
+
+                if (elemento.id in objeto) {
+                    elemento.value = objeto[elemento.id];
+                }
+            }
+            ocultarInputsVacios(formulario);
+        }
+
+        function ocultarInputsVacios(formulario) {
+            const elementos = formulario.elements;
+            for (let i = 0; i < elementos.length; i++) {
+                const elemento = elementos[i];
+                if (elemento.value === '') {
+                    const div = elemento.parentElement;
+                    div.style.display = 'none';
+                }
+            }
+        }
+
+        function leerInputs() {
+            const form = $("abm-form");
+            const obj = {};
+            for (let i = 0; i < form.elements.length; i++) {
+                const input = form.elements[i];
+                const value = input.value;
+                const key = input.id;
+                obj[key] = value;
+            }
+            return crearUno(obj);
+        }
+
+        
+        function confirmarModificacion() {
+            const filtro = $("filtro2");
+            const lectura = leerInputs();
+            const valido = validarDatos(lectura,filtro.value);
+            if (valido == true) {
+                const mensaje = '¿Estás seguro de realizar esta acción?';
+                const confirmado = window.confirm(mensaje);
+                if (confirmado) {
+                    actualizarPorId(arrayDeObjetos, crearUno(lectura));
+                    console.log('Acción confirmada');
+                } else {
+                    console.log('Cancelado');
+                }
+            } else {
+                console.log('Abortado');
+                alert(valido);
+            }      
+
+        }
+
+        function confirmarEliminacion() {
+            const mensaje = '¿Estás seguro de realizar esta acción?';
+            const confirmado = window.confirm(mensaje);
+            if (confirmado) {
+                eliminarPorId(arrayDeObjetos, crearUno(leerInputs()));
+                console.log('Acción confirmada');
+            } else {
+                console.log('Cancelado');
+            }
+        }
+
+        function confirmarAgregar() {
+            const filtro = $("filtro2");
+            const lectura = leerInputs();
+            const valido = validarDatos(lectura,filtro.value);
+            if (valido == true) {
+                const mensaje = '¿Estás seguro de realizar esta acción?';
+                const confirmado = window.confirm(mensaje);
+                if (confirmado) {
+                    agregarPersonaje(arrayDeObjetos,crearUno(lectura));
+                    console.log('Acción confirmada');
+                } else {
+                    console.log('Cancelado');
+                }
+            } else {
+                console.log('Abortado');
+                alert(valido);
+            }
+        }
+
+
+    </script>
+</body>
+
+</html>
